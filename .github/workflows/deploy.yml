@@ -1,0 +1,46 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build WAR
+        run: mvn clean package
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/private_key
+          chmod 600 ~/.ssh/private_key
+
+      - name: Copy WAR to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no \
+          -i ~/.ssh/private_key \
+          target/dptweb-1.0.war \
+          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/
+
+      - name: Deploy on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+          -i ~/.ssh/private_key \
+          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+
+          sudo cp /tmp/dptweb-1.0.war /opt/apache-tomcat-9.0.31/webapps/
+
+          EOF
