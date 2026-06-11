@@ -1,3 +1,5 @@
-FROM nginx:latest
+FROM tomcat:9.0
 
-COPY . /usr/share/nginx/html
+COPY target/dptweb-1.0.war /usr/local/tomcat/webapps/
+
+EXPOSE 8080
